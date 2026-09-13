@@ -290,7 +290,32 @@ function saveNewPrice(productId) {
         }
     }
 }
+function envoyerCommandeWhatsApp(nomClient, telephone, adresse, ville, panier, total) {
+    // Votre numéro WhatsApp avec l'indicatif du Maroc 212 (sans le 0 au début)
+    const numeroWhatsApp = "212705948052"; 
 
+    // Préparation de la liste des produits
+    let listeProduits = "";
+    panier.forEach(item => {
+        listeProduits += `• ${item.nom} (x${item.quantite}) - ${item.prix * item.quantite} DH\n`;
+    });
+
+    // Message envoyé sur WhatsApp
+    const message = `🛍️ *NOUVELLE COMMANDE - LUNARAE*\n\n` +
+                    `👤 *Nom:* ${nomClient}\n` +
+                    `📞 *Téléphone:* ${telephone}\n` +
+                    `📍 *Adresse:* ${adresse}\n` +
+                    `🏙️ *Ville:* ${ville}\n\n` +
+                    `📦 *Détails du Panier:*\n${listeProduits}\n` +
+                    `💰 *Total à payer:* ${total} DH (Paiement à la livraison)\n\n` +
+                    `Merci de confirmer ma commande !`;
+
+    // Encodage du message pour l'URL
+    const urlWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(message)}`;
+
+    // Redirection vers WhatsApp
+    window.open(urlWhatsApp, '_blank');
+}
 function deleteProduct(productId) {
     if (confirm("Voulez-vous vraiment supprimer ce produit de la boutique ?")) {
         products = products.filter(p => p.id !== productId);
