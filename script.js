@@ -1,326 +1,257 @@
-// Produit par défaut si localStorage est vide
-const initialProducts = [
+// ==========================================
+// 1. DONNÉES DES PRODUITS (DATABASE PROVISOIRE)
+// ==========================================
+const products = [
     {
         id: 1,
-        name: "Hoodie Oversize Heavyweight",
-        category: "Streetwear / Unisex",
-        price: 450,
-        image: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop"
+        name: "Oversized Hoodie Vintage Black",
+        category: "hoodies",
+        price: 350,
+        image: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500&auto=format&fit=crop"
     },
     {
         id: 2,
-        name: "Pantalon Cargo Tactical Fit",
-        category: "Pantalons / Urban",
-        price: 390,
-        image: "https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=600&auto=format&fit=crop"
+        name: "T-Shirt Graphic Heavyweight White",
+        category: "tshirts",
+        price: 220,
+        image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop"
     },
     {
         id: 3,
-        name: "T-Shirt Graphic LUNARAE",
-        category: "T-Shirts / Boxy Fit",
-        price: 250,
-        image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop"
+        name: "Cargo Pants Tactical Grey",
+        category: "pants",
+        price: 420,
+        image: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=500&auto=format&fit=crop"
     },
     {
         id: 4,
-        name: "Doudoune Puffer Jacket Street",
-        category: "Outwear / Hiver",
-        price: 750,
-        image: "https://images.unsplash.com/photo-1544441893-675973e31985?w=600&auto=format&fit=crop"
+        name: "Zip Hoodie Urban Street",
+        category: "hoodies",
+        price: 380,
+        image: "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=500&auto=format&fit=crop"
     }
 ];
 
-// Variables globales
-let products = JSON.parse(localStorage.getItem("lunarae_products")) || initialProducts;
-let cart = JSON.parse(localStorage.getItem("lunarae_cart")) || [];
-const ADMIN_PASS = "admin123";
+// État global du panier
+let cart = JSON.parse(localStorage.getItem('lunarae_cart')) || [];
 
-// Initialisation au chargement de la page
-document.addEventListener("DOMContentLoaded", () => {
-    saveProducts();
-    renderProducts();
+// ==========================================
+// 2. INITIALISATION DU SITE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    displayProducts(products);
     updateCartUI();
-    initEventListeners();
+    setupEventListeners();
 });
 
-// Sauvegarder dans LocalStorage
-function saveProducts() {
-    localStorage.setItem("lunarae_products", JSON.stringify(products));
-}
+// ==========================================
+// 3. AFFICHAGE DES PRODUITS
+// ==========================================
+function displayProducts(items) {
+    const productGrid = document.getElementById('product-grid');
+    if (!productGrid) return;
 
-function saveCart() {
-    localStorage.setItem("lunarae_cart", JSON.stringify(cart));
-}
-
-// 1. RENDER DU CATALOGUE
-function renderProducts() {
-    const grid = document.getElementById("product-grid");
-    grid.innerHTML = "";
-
-    products.forEach(p => {
-        const card = document.createElement("div");
-        card.className = "product-card";
-        card.innerHTML = `
-            <div class="product-image">
-                <span class="badge">Drop 2026</span>
-                <img src="${p.image}" alt="${p.name}">
-                <button class="add-to-cart-btn" onclick="addToCart(${p.id})">
-                    <i class="fa-solid fa-cart-plus"></i> Ajouter au panier
+    productGrid.innerHTML = items.map(product => `
+        <div class="product-card">
+            <img src="${product.image}" alt="${product.name}" class="product-img">
+            <div class="product-info">
+                <h3 class="product-title">${product.name}</h3>
+                <p class="product-price">${product.price} DH</p>
+                <button class="btn-add-cart" onclick="addToCart(${product.id})">
+                    Ajouter au panier
                 </button>
             </div>
-            <div class="product-info">
-                <h3>${p.name}</h3>
-                <p class="category">${p.category}</p>
-                <p class="price">${p.price} DH</p>
-            </div>
-        `;
-        grid.appendChild(card);
-    });
+        </div>
+    `).join('');
 }
 
-// 2. GESTION DU PANIER
+// ==========================================
+// 4. GESTION DU PANIER (AJOUT, SUPPRESSION)
+// ==========================================
 function addToCart(productId) {
     const product = products.find(p => p.id === productId);
-    if (!product) return;
-
     const existingItem = cart.find(item => item.id === productId);
+
     if (existingItem) {
-        existingItem.quantity++;
+        existingItem.quantity += 1;
     } else {
-        cart.push({ ...product, quantity: 1 });
-    }
-
-    saveCart();
-    updateCartUI();
-    toggleCart(true);
-}
-
-function changeQty(productId, delta) {
-    const item = cart.find(i => i.id === productId);
-    if (!item) return;
-
-    item.quantity += delta;
-    if (item.quantity <= 0) {
-        cart = cart.filter(i => i.id !== productId);
-    }
-    saveCart();
-    updateCartUI();
-}
-
-function updateCartUI() {
-    const cartBody = document.getElementById("cart-body");
-    const cartCount = document.getElementById("cart-count");
-    const cartTotal = document.getElementById("cart-total-price");
-    const modalTotal = document.getElementById("modal-total-price");
-
-    cartBody.innerHTML = "";
-    let total = 0;
-    let count = 0;
-
-    if (cart.length === 0) {
-        cartBody.innerHTML = `<p style="text-align:center; color:#999; margin-top:20px;">Votre panier est vide.</p>`;
-    } else {
-        cart.forEach(item => {
-            total += item.price * item.quantity;
-            count += item.quantity;
-
-            const div = document.createElement("div");
-            div.className = "cart-item";
-            div.innerHTML = `
-                <img src="${item.image}" alt="${item.name}">
-                <div class="cart-item-details">
-                    <h4>${item.name}</h4>
-                    <p>${item.price} DH</p>
-                    <div>
-                        <button class="qty-btn" onclick="changeQty(${item.id}, -1)">-</button>
-                        <span style="margin: 0 8px;">${item.quantity}</span>
-                        <button class="qty-btn" onclick="changeQty(${item.id}, 1)">+</button>
-                    </div>
-                </div>
-            `;
-            cartBody.appendChild(div);
+        cart.push({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+            quantity: 1
         });
     }
 
-    cartCount.textContent = count;
-    cartTotal.textContent = `${total} DH`;
-    modalTotal.textContent = `${total} DH`;
+    saveCart();
+    updateCartUI();
+    openCartModal();
 }
 
-function toggleCart(open) {
-    const cartDrawer = document.getElementById("cart-drawer");
-    const overlay = document.getElementById("overlay");
-    if (open) {
-        cartDrawer.classList.add("active");
-        overlay.classList.add("active");
-    } else {
-        cartDrawer.classList.remove("active");
-        overlay.classList.remove("active");
-    }
+function removeFromCart(productId) {
+    cart = cart.filter(item => item.id !== productId);
+    saveCart();
+    updateCartUI();
 }
 
-// 3. EVENT LISTENERS & MODALS
-function initEventListeners() {
-    // Menu Burger
-    document.getElementById("burger-menu").addEventListener("click", () => {
-        document.getElementById("nav-links").classList.toggle("active");
-    });
-
-    // Cart Drawer Toggles
-    document.getElementById("open-cart-btn").addEventListener("click", () => toggleCart(true));
-    document.getElementById("close-cart-btn").addEventListener("click", () => toggleCart(false));
-    document.getElementById("overlay").addEventListener("click", () => {
-        toggleCart(false);
-        closeModals();
-    });
-
-    // Checkout Modal
-    document.getElementById("checkout-btn").addEventListener("click", () => {
-        if (cart.length === 0) {
-            alert("Votre panier est vide !");
+function updateQuantity(productId, change) {
+    const item = cart.find(item => item.id === productId);
+    if (item) {
+        item.quantity += change;
+        if (item.quantity <= 0) {
+            removeFromCart(productId);
             return;
         }
-        toggleCart(false);
-        document.getElementById("checkout-modal").classList.add("active");
-    });
+    }
+    saveCart();
+    updateCartUI();
+}
 
-    document.getElementById("close-modal-btn").addEventListener("click", closeModals);
-    
-    // Soumission Formulaire Commande Client
-    document.getElementById("order-form").addEventListener("submit", (e) => {
-        e.preventDefault();
-        document.getElementById("checkout-step-1").classList.add("hidden");
-        document.getElementById("checkout-step-2").classList.remove("hidden");
-        cart = [];
-        saveCart();
-        updateCartUI();
-    });
+function saveCart() {
+    localStorage.setItem('lunarae_cart', JSON.stringify(cart));
+}
 
-    document.getElementById("finish-order-btn").addEventListener("click", () => {
-        closeModals();
-        document.getElementById("checkout-step-1").classList.remove("hidden");
-        document.getElementById("checkout-step-2").classList.add("hidden");
-    });
+// ==========================================
+// 5. MISE À JOUR DE L'INTERFACE DU PANIER
+// ==========================================
+function updateCartUI() {
+    // Compteur de panier dans la barre de navigation
+    const cartCount = document.getElementById('cart-count');
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    if (cartCount) cartCount.innerText = totalItems;
 
-    // ESPACE ADMIN
-    document.getElementById("open-admin-btn").addEventListener("click", () => {
-        document.getElementById("admin-modal").classList.add("active");
-    });
-    document.getElementById("close-admin-btn").addEventListener("click", closeModals);
+    // Éléments du panier
+    const cartItemsContainer = document.getElementById('cart-items');
+    const cartTotalElement = document.getElementById('cart-total');
 
-    // Login Admin
-    document.getElementById("admin-login-form").addEventListener("submit", (e) => {
-        e.preventDefault();
-        const pass = document.getElementById("admin-pass-input").value;
-        if (pass === ADMIN_PASS) {
-            document.getElementById("admin-login-view").classList.add("hidden");
-            document.getElementById("admin-dashboard-view").classList.remove("hidden");
-            renderAdminTable();
+    if (cartItemsContainer) {
+        if (cart.length === 0) {
+            cartItemsContainer.innerHTML = '<p class="empty-cart">Votre panier est vide.</p>';
         } else {
-            alert("Mot de passe incorrect !");
-        }
-    });
-
-    document.getElementById("admin-logout-btn").addEventListener("click", () => {
-        document.getElementById("admin-login-view").classList.remove("hidden");
-        document.getElementById("admin-dashboard-view").classList.add("hidden");
-        document.getElementById("admin-pass-input").value = "";
-    });
-
-    // Ajouter un produit (Admin)
-    document.getElementById("add-product-form").addEventListener("submit", (e) => {
-        e.preventDefault();
-        const newProd = {
-            id: Date.now(),
-            name: document.getElementById("new-p-name").value,
-            category: document.getElementById("new-p-category").value,
-            price: parseFloat(document.getElementById("new-p-price").value),
-            image: document.getElementById("new-p-image").value
-        };
-
-        products.push(newProd);
-        saveProducts();
-        renderProducts();
-        renderAdminTable();
-        document.getElementById("add-product-form").reset();
-        alert("Nouveau produit/collection ajouté avec succès !");
-    });
-}
-
-function closeModals() {
-    document.getElementById("checkout-modal").classList.remove("active");
-    document.getElementById("admin-modal").classList.remove("active");
-}
-
-// 4. FONCTIONS DASHBOARD ADMIN
-function renderAdminTable() {
-    const tbody = document.getElementById("admin-product-table");
-    tbody.innerHTML = "";
-
-    products.forEach(p => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td><img src="${p.image}" alt=""></td>
-            <td><strong>${p.name}</strong></td>
-            <td>${p.category}</td>
-            <td>
-                <input type="number" value="${p.price}" class="price-edit-input" id="price-input-${p.id}"> DH
-            </td>
-            <td>
-                <button class="btn btn-primary btn-sm" onclick="saveNewPrice(${p.id})"><i class="fa-solid fa-save"></i> Enregistrer</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function saveNewPrice(productId) {
-    const input = document.getElementById(`price-input-${productId}`);
-    const newPrice = parseFloat(input.value);
-
-    if (newPrice > 0) {
-        const prod = products.find(p => p.id === productId);
-        if (prod) {
-            prod.price = newPrice;
-            saveProducts();
-            renderProducts();
-            renderAdminTable();
-            alert(`Le prix de "${prod.name}" a été mis à jour à ${newPrice} DH !`);
+            cartItemsContainer.innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <img src="${item.image}" alt="${item.name}">
+                    <div class="cart-item-details">
+                        <h4>${item.name}</h4>
+                        <p>${item.price} DH</p>
+                        <div class="quantity-controls">
+                            <button onclick="updateQuantity(${item.id}, -1)">-</button>
+                            <span>${item.quantity}</span>
+                            <button onclick="updateQuantity(${item.id}, 1)">+</button>
+                        </div>
+                    </div>
+                    <button class="btn-remove" onclick="removeFromCart(${item.id})">&times;</button>
+                </div>
+            `).join('');
         }
     }
-}
-function envoyerCommandeWhatsApp(nomClient, telephone, adresse, ville, panier, total) {
-    // Votre numéro WhatsApp avec l'indicatif du Maroc 212 (sans le 0 au début)
-    const numeroWhatsApp = "212705948052"; 
 
-    // Préparation de la liste des produits
-    let listeProduits = "";
-    panier.forEach(item => {
-        listeProduits += `• ${item.nom} (x${item.quantite}) - ${item.prix * item.quantite} DH\n`;
+    // Calcul du Total
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    if (cartTotalElement) cartTotalElement.innerText = `${total} DH`;
+}
+
+// ==========================================
+// 6. ENVOI DE LA COMMANDE SUR WHATSAPP 📱
+// ==========================================
+function checkoutWhatsApp(event) {
+    event.preventDefault();
+
+    if (cart.length === 0) {
+        alert("Votre panier est vide !");
+        return;
+    }
+
+    // Récupération des données du formulaire
+    const nom = document.getElementById('client-name').value.trim();
+    const telephone = document.getElementById('client-phone').value.trim();
+    const adresse = document.getElementById('client-address').value.trim();
+    const ville = document.getElementById('client-city').value.trim();
+
+    if (!nom || !telephone || !adresse || !ville) {
+        alert("Veuillez remplir tous les champs de livraison.");
+        return;
+    }
+
+    // Numéro WhatsApp cible (Maroc)
+    const whatsappNum = "212705948052";
+
+    // Préparation de la liste des articles
+    let itemsText = "";
+    let totalPrix = 0;
+
+    cart.forEach(item => {
+        const subtotal = item.price * item.quantity;
+        totalPrix += subtotal;
+        itemsText += `• *${item.name}* (x${item.quantity}) : ${subtotal} DH\n`;
     });
 
-    // Message envoyé sur WhatsApp
-    const message = `🛍️ *NOUVELLE COMMANDE - LUNARAE*\n\n` +
-                    `👤 *Nom:* ${nomClient}\n` +
-                    `📞 *Téléphone:* ${telephone}\n` +
-                    `📍 *Adresse:* ${adresse}\n` +
-                    `🏙️ *Ville:* ${ville}\n\n` +
-                    `📦 *Détails du Panier:*\n${listeProduits}\n` +
-                    `💰 *Total à payer:* ${total} DH (Paiement à la livraison)\n\n` +
-                    `Merci de confirmer ma commande !`;
+    // Construction du message WhatsApp
+    const message = `🛍️ *NOUVELLE COMMANDE - LUNARAE.MA*\n` +
+                    `----------------------------------\n` +
+                    `👤 *Nom :* ${nom}\n` +
+                    `📞 *Téléphone :* ${telephone}\n` +
+                    `📍 *Adresse :* ${adresse}\n` +
+                    `🏙️ *Ville :* ${ville}\n` +
+                    `----------------------------------\n` +
+                    `📦 *PRODUITS COMMANDÉS :*\n` +
+                    `${itemsText}` +
+                    `----------------------------------\n` +
+                    `💰 *TOTAL À PAYER :* ${totalPrix} DH\n` +
+                    `💳 *Mode de paiement :* Cash à la livraison\n\n` +
+                    `Merci de confirmer la commande !`;
 
-    // Encodage du message pour l'URL
-    const urlWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(message)}`;
+    // Encodage et ouverture de l'application WhatsApp
+    const whatsappURL = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(message)}`;
+    
+    // Réinitialiser le panier après la commande
+    cart = [];
+    saveCart();
+    updateCartUI();
+    closeCartModal();
 
-    // Redirection vers WhatsApp
-    window.open(urlWhatsApp, '_blank');
+    // Redirection WhatsApp
+    window.open(whatsappURL, '_blank');
 }
-function deleteProduct(productId) {
-    if (confirm("Voulez-vous vraiment supprimer ce produit de la boutique ?")) {
-        products = products.filter(p => p.id !== productId);
-        saveProducts();
-        renderProducts();
-        renderAdminTable();
-    }
+
+// ==========================================
+// 7. ÉVÉNEMENTS & MODALE PANIER
+// ==========================================
+function setupEventListeners() {
+    // Boutons d'ouverture/fermeture Panier
+    const cartBtn = document.getElementById('cart-btn');
+    const closeCartBtn = document.getElementById('close-cart');
+    const checkoutForm = document.getElementById('checkout-form');
+
+    if (cartBtn) cartBtn.addEventListener('click', openCartModal);
+    if (closeCartBtn) closeCartBtn.addEventListener('click', closeCartModal);
+    if (checkoutForm) checkoutForm.addEventListener('submit', checkoutWhatsApp);
+
+    // Filtres par catégorie
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            const category = e.target.dataset.category;
+            if (category === 'all') {
+                displayProducts(products);
+            } else {
+                const filtered = products.filter(p => p.category === category);
+                displayProducts(filtered);
+            }
+        });
+    });
+}
+
+function openCartModal() {
+    const modal = document.getElementById('cart-modal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeCartModal() {
+    const modal = document.getElementById('cart-modal');
+    if (modal) modal.classList.remove('active');
 }
